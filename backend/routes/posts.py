@@ -74,7 +74,12 @@ def get_post(post_id):
 @posts_bp.route('/user/<int:user_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_user_posts(user_id):
-    """Get all posts by a specific user with pagination."""
+    """
+    Get all posts by a specific user with pagination.
+    
+    This endpoint fetches posts for the user specified by user_id parameter,
+    NOT the current logged-in user. Used for profile pages and user post listings.
+    """
     try:
         user = User.query.get(user_id)
         if not user:
@@ -85,7 +90,9 @@ def get_user_posts(user_id):
         limit = request.args.get('limit', 10, type=int)
         limit = min(limit, 50)  # Max 50 posts per page
         
-        # Query posts with pagination
+        # Query posts for the specified user (user_id parameter)
+        # Uses the user.posts relationship which correctly filters by user_id
+        # Ordered by newest first
         pagination = user.posts.order_by(Post.created_at.desc()).paginate(
             page=page, per_page=limit, error_out=False
         )
@@ -239,21 +246,44 @@ def get_feed():
     Get personalized feed endpoint.
     Returns posts from users that the current user follows, plus their own posts.
     Implements pagination for performance.
+    
+    Query Logic:
+    - Queries the follows table directly to get IDs of users the current user follows
+    - The follows table structure: follower_id (current user) -> followed_id (user being followed)
+    - Creates a list of user IDs: [followed_user_ids] + [current_user_id]
+    - Filters posts where Post.user_id is in this list
+    - Results are ordered by newest first (created_at DESC)
+    
+    This approach is more reliable than using relationship lazy loading and ensures
+    we always get posts from followed users plus the current user's own posts.
     """
     try:
+        from backend.models import follows
+        
         current_user_id = get_jwt_identity()
-        current_user = User.query.get(current_user_id)
         
         # Pagination parameters
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 10, type=int)
         limit = min(limit, 50)  # Max 50 posts per page
         
-        # Get IDs of users that current user follows
-        following_ids = [user.id for user in current_user.following.all()]
-        following_ids.append(current_user_id)  # Include own posts
+        # Query the follows table directly to get IDs of users the current user follows
+        # This is more reliable than using relationship lazy loading
+        # SELECT followed_id FROM follows WHERE follower_id = current_user_id
+        followed_ids_result = db.session.query(follows.c.followed_id).filter(
+            follows.c.follower_id == current_user_id
+        ).all()
+        
+        # Extract user IDs from query result and add current user's ID
+        # This list contains: [users we follow] + [ourselves]
+        following_ids = [row[0] for row in followed_ids_result]
+        following_ids.append(current_user_id)  # Always include own posts
+        
+        # If user follows no one, following_ids will just be [current_user_id]
+        # This ensures we still see our own posts even if we don't follow anyone
         
         # Query posts from followed users and self, ordered by newest first
+        # Filter: Post.user_id IN (following_ids)
         pagination = Post.query.filter(
             Post.user_id.in_(following_ids)
         ).order_by(

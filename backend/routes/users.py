@@ -10,6 +10,44 @@ from backend.models import User, Post, follows
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
 
+@users_bp.route('', methods=['GET'])
+@jwt_required()  # Protected route: requires authentication to discover users
+def get_all_users():
+    """
+    Get all users (except current user) for discover/explore page.
+    Returns list of users with followers_count, following_count, and is_following status.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get all users except the current user
+        all_users = User.query.filter(User.id != current_user_id).all()
+        
+        # Build response with follow status and counts
+        users_data = []
+        for user in all_users:
+            followers_count = user.followers.count()
+            following_count = user.following.count()
+            is_following = current_user.following.filter_by(id=user.id).first() is not None
+            
+            user_dict = user.to_dict()
+            user_dict.update({
+                'followers_count': followers_count,
+                'following_count': following_count,
+                'is_following': is_following
+            })
+            users_data.append(user_dict)
+        
+        return jsonify({'users': users_data, 'count': len(users_data)}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @users_bp.route('/<username>', methods=['GET'])
 @jwt_required(optional=True)  # Optional: allows viewing profiles without login
 def get_user_profile(username):
@@ -37,6 +75,9 @@ def get_user_profile(username):
                 is_following = current_user.following.filter_by(id=user.id).first() is not None
         
         # Get user's posts (limit to recent posts for performance)
+        # This queries all posts by the specific user (user.posts relationship)
+        # Ordered by newest first, limited to 50 for initial profile load
+        # Note: This correctly fetches posts for the profile being viewed, not the current user
         posts = user.posts.order_by(Post.created_at.desc()).limit(50).all()
         
         profile_data = user.to_dict()

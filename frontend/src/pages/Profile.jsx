@@ -91,6 +91,7 @@ const Profile = () => {
             src={profile.profile_pic_url || 'https://via.placeholder.com/150'}
             alt={profile.username}
             className="w-24 h-24 rounded-full object-cover"
+            referrerPolicy="no-referrer"
           />
           <div className="flex-1 text-center md:text-left">
             <div className="flex flex-col md:flex-row items-center md:items-center space-y-4 md:space-y-0 md:space-x-6 mb-4">
@@ -151,6 +152,8 @@ const Profile = () => {
                   src={post.image_url}
                   alt={post.caption || 'Post'}
                   className="w-full h-full object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
                   onError={(e) => {
                     e.target.src = 'https://via.placeholder.com/300x300?text=Image+Not+Found';
                   }}

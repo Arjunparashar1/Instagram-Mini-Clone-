@@ -50,6 +50,7 @@ export const authAPI = {
 
 // User API endpoints
 export const userAPI = {
+  getAllUsers: () => api.get('/api/users'),
   getProfile: (username) => api.get(`/api/users/${username}`),
   follow: (userId) => api.post(`/api/users/follow/${userId}`),
   unfollow: (userId) => api.delete(`/api/users/unfollow/${userId}`),

@@ -54,6 +54,7 @@ const CommentList = ({ postId }) => {
             src={comment.profile_pic_url || 'https://via.placeholder.com/150'}
             alt={comment.username}
             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+            referrerPolicy="no-referrer"
           />
           <div className="flex-1">
             <div className="bg-gray-50 rounded-lg px-3 py-2">

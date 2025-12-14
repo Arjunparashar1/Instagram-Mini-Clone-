@@ -82,6 +82,7 @@ const CreatePost = () => {
                 src={formData.image_url}
                 alt="Preview"
                 className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+                referrerPolicy="no-referrer"
                 onError={(e) => {
                   e.target.style.display = 'none';
                 }}

@@ -12,6 +12,7 @@ import Feed from './pages/Feed';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
 import PostDetail from './pages/PostDetail';
+import Explore from './pages/Explore';
 
 // Protected Route component - redirects to login if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -80,6 +81,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <CreatePost />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/explore"
+          element={
+            <ProtectedRoute>
+              <Explore />
             </ProtectedRoute>
           }
         />

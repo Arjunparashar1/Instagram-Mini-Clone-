@@ -80,6 +80,7 @@ const PostCard = ({ post, onUpdate }) => {
           src={post.profile_pic_url || 'https://via.placeholder.com/150'}
           alt={post.username}
           className="w-10 h-10 rounded-full object-cover"
+          referrerPolicy="no-referrer"
         />
         <Link
           to={`/profile/${post.username}`}
@@ -95,6 +96,8 @@ const PostCard = ({ post, onUpdate }) => {
         src={post.image_url}
         alt={post.caption || 'Post image'}
         className="w-full object-cover"
+        referrerPolicy="no-referrer"
+        loading="lazy"
         onError={(e) => {
           e.target.src = 'https://via.placeholder.com/500x500?text=Image+Not+Found';
         }}

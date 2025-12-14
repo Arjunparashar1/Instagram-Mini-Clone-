@@ -35,6 +35,12 @@ const Navbar = () => {
                   Home
                 </Link>
                 <Link
+                  to="/explore"
+                  className="text-gray-700 hover:text-primary transition-colors"
+                >
+                  Explore
+                </Link>
+                <Link
                   to="/create-post"
                   className="text-gray-700 hover:text-primary transition-colors"
                 >
