@@ -1,10 +1,12 @@
 /**
  * Post detail page component.
  * Displays a single post with full details, comments, and interactions.
+ * Uses PostContext for state management - no page refresh needed!
  */
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePost } from '../context/PostContext';
 import { postAPI } from '../services/api';
 import CommentList from '../components/CommentList';
 import toast from 'react-hot-toast';
@@ -12,14 +14,14 @@ import toast from 'react-hot-toast';
 const PostDetail = () => {
   const { id } = useParams();
   const { isAuthenticated, user } = useAuth();
+  const { getPost, setPost, toggleLike, addComment, refreshPost } = usePost();
   const navigate = useNavigate();
-  const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
+
+  // Get post from context (may already be loaded)
+  const post = getPost(id);
 
   useEffect(() => {
     fetchPost();
@@ -28,12 +30,15 @@ const PostDetail = () => {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await postAPI.getById(id);
-      const postData = response.data;
-      setPost(postData);
-      setIsLiked(postData.is_liked || false);
-      setLikeCount(postData.like_count || 0);
-      setCommentCount(postData.comments?.length || 0);
+      // Try to get from context first
+      let postData = getPost(id);
+      
+      // If not in context, fetch from API
+      if (!postData) {
+        const response = await postAPI.getById(id);
+        postData = response.data;
+        setPost(postData);
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to load post');
       navigate('/');
@@ -50,19 +55,9 @@ const PostDetail = () => {
     }
 
     try {
-      if (isLiked) {
-        await postAPI.unlike(id);
-        setIsLiked(false);
-        setLikeCount((prev) => prev - 1);
-        toast.success('Post unliked');
-      } else {
-        await postAPI.like(id);
-        setIsLiked(true);
-        setLikeCount((prev) => prev + 1);
-        toast.success('Post liked');
-      }
+      await toggleLike(id);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to like post');
+      // Error already handled in context
     }
   };
 
@@ -72,13 +67,12 @@ const PostDetail = () => {
 
     setIsSubmitting(true);
     try {
-      await postAPI.addComment(id, commentText);
+      await addComment(id, commentText, user);
       setCommentText('');
-      setCommentCount((prev) => prev + 1);
-      toast.success('Comment added');
-      fetchPost(); // Refresh to show new comment
+      // Comment count is updated optimistically in context
+      // Refresh comments list by triggering a re-render
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to add comment');
+      // Error already handled in context
     } finally {
       setIsSubmitting(false);
     }
@@ -173,7 +167,7 @@ const PostDetail = () => {
               )}
 
               {/* Comments List */}
-              <CommentList postId={id} />
+              <CommentList postId={id} key={post.comment_count} />
             </div>
 
             {/* Actions */}
@@ -182,12 +176,12 @@ const PostDetail = () => {
                 <button
                   onClick={handleLike}
                   className={`focus:outline-none transition-transform hover:scale-110 ${
-                    isLiked ? 'text-red-500' : 'text-gray-700'
+                    post?.is_liked ? 'text-red-500' : 'text-gray-700'
                   }`}
                 >
                   <svg
                     className="w-6 h-6"
-                    fill={isLiked ? 'currentColor' : 'none'}
+                    fill={post?.is_liked ? 'currentColor' : 'none'}
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -201,8 +195,8 @@ const PostDetail = () => {
                 </button>
               </div>
 
-              {likeCount > 0 && (
-                <p className="font-semibold text-gray-900">{likeCount} likes</p>
+              {(post?.like_count || 0) > 0 && (
+                <p className="font-semibold text-gray-900">{post.like_count} likes</p>
               )}
 
               <p className="text-gray-500 text-sm">{formatDate(post.created_at)}</p>

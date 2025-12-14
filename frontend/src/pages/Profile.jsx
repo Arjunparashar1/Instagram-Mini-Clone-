@@ -1,16 +1,19 @@
 /**
  * User profile page component.
  * Displays user information, posts grid, and follow/unfollow functionality.
+ * Uses PostContext to sync post data across pages.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePost } from '../context/PostContext';
 import { userAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated } = useAuth();
+  const { posts, setPostsBatch, setUserPostsList, getPost } = usePost();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,8 +27,16 @@ const Profile = () => {
     try {
       setLoading(true);
       const response = await userAPI.getProfile(username);
-      setProfile(response.data);
-      setFollowing(response.data.is_following || false);
+      const profileData = response.data;
+      setProfile(profileData);
+      setFollowing(profileData.is_following || false);
+      
+      // Store posts in context
+      if (profileData.posts && profileData.posts.length > 0) {
+        setPostsBatch(profileData.posts);
+        const postIds = profileData.posts.map((post) => post.id);
+        setUserPostsList(username, postIds);
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to load profile');
       navigate('/');
@@ -33,6 +44,12 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
+  // Get posts from context (may have been updated)
+  const profilePosts = useMemo(() => {
+    if (!profile?.posts) return [];
+    return profile.posts.map((post) => getPost(post.id) || post);
+  }, [profile, posts, getPost]);
 
   const handleFollow = async () => {
     if (!isAuthenticated) {
@@ -118,7 +135,7 @@ const Profile = () => {
             </div>
             <div className="flex justify-center md:justify-start space-x-6 mb-4">
               <div>
-                <span className="font-semibold">{profile.posts?.length || 0}</span>
+                <span className="font-semibold">{profilePosts?.length || 0}</span>
                 <span className="text-gray-600 ml-1">posts</span>
               </div>
               <div>
@@ -138,11 +155,11 @@ const Profile = () => {
       </div>
 
       {/* Posts Grid */}
-      {profile.posts && profile.posts.length > 0 ? (
+      {profilePosts && profilePosts.length > 0 ? (
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Posts</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {profile.posts.map((post) => (
+            {profilePosts.map((post) => (
               <Link
                 key={post.id}
                 to={`/post/${post.id}`}

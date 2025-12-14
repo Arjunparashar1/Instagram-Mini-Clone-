@@ -5,13 +5,16 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePost } from '../context/PostContext';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { clearPosts } = usePost();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
+    clearPosts(); // Clear posts state on logout
     navigate('/login');
   };
 

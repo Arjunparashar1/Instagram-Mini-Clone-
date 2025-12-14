@@ -5,6 +5,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PostProvider } from './context/PostContext';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -112,9 +113,11 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <AppRoutes />
-        </div>
+        <PostProvider>
+          <div className="min-h-screen bg-gray-50">
+            <AppRoutes />
+          </div>
+        </PostProvider>
       </AuthProvider>
     </Router>
   );

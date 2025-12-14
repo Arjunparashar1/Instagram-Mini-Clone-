@@ -1,33 +1,40 @@
 /**
  * Feed page component displaying personalized feed of posts.
  * Implements pagination for loading more posts.
+ * Uses PostContext for state management - no page refresh needed!
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePost } from '../context/PostContext';
 import { postAPI } from '../services/api';
 import PostCard from '../components/PostCard';
 import toast from 'react-hot-toast';
 
 const Feed = () => {
   const { isAuthenticated } = useAuth();
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { feedPosts, posts, setPostsBatch, setFeed, addToFeed, setLoading } = usePost();
+  const [loading, setLocalLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Get actual post objects from IDs
+  const postsList = useMemo(() => {
+    return feedPosts.map((postId) => posts[postId]).filter(Boolean);
+  }, [feedPosts, posts]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchFeed();
     } else {
-      setLoading(false);
+      setLocalLoading(false);
     }
   }, [isAuthenticated, page]);
 
   const fetchFeed = async () => {
     try {
       if (page === 1) {
-        setLoading(true);
+        setLocalLoading(true);
       } else {
         setLoadingMore(true);
       }
@@ -35,17 +42,21 @@ const Feed = () => {
       const response = await postAPI.getFeed(page, 10);
       const newPosts = response.data.posts || [];
 
+      // Store posts in context
+      setPostsBatch(newPosts);
+      const postIds = newPosts.map((post) => post.id);
+
       if (page === 1) {
-        setPosts(newPosts);
+        setFeed(postIds);
       } else {
-        setPosts((prev) => [...prev, ...newPosts]);
+        addToFeed(postIds);
       }
 
       setHasMore(response.data.has_next || false);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to load feed');
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
       setLoadingMore(false);
     }
   };
@@ -54,11 +65,6 @@ const Feed = () => {
     if (!loadingMore && hasMore) {
       setPage((prev) => prev + 1);
     }
-  };
-
-  const handlePostUpdate = () => {
-    // Refresh feed when a post is updated (liked/commented)
-    fetchFeed();
   };
 
   if (!isAuthenticated) {
@@ -80,7 +86,7 @@ const Feed = () => {
     );
   }
 
-  if (posts.length === 0) {
+  if (postsList.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Your feed is empty</h2>
@@ -95,8 +101,8 @@ const Feed = () => {
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Feed</h1>
       <div className="space-y-6">
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} onUpdate={handlePostUpdate} />
+        {postsList.map((post) => (
+          <PostCard key={post.id} post={post} />
         ))}
       </div>
 

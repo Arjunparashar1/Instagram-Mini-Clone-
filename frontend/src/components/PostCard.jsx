@@ -1,22 +1,32 @@
 /**
  * Post card component for displaying posts in feed.
  * Shows image, caption, likes, comments, and interaction buttons.
+ * Uses PostContext for optimistic updates - no page refresh needed!
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { postAPI } from '../services/api';
+import { usePost } from '../context/PostContext';
 import toast from 'react-hot-toast';
 import CommentList from './CommentList';
 
-const PostCard = ({ post, onUpdate }) => {
+const PostCard = ({ post: initialPost }) => {
   const { isAuthenticated, user } = useAuth();
-  const [isLiked, setIsLiked] = useState(post.is_liked || false);
-  const [likeCount, setLikeCount] = useState(post.like_count || 0);
+  const { getPost, setPost, toggleLike, addComment } = usePost();
+  
+  // Get the latest post data from context (may have been updated)
+  const post = getPost(initialPost.id) || initialPost;
+  
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ensure post is in context
+  useEffect(() => {
+    if (initialPost) {
+      setPost(initialPost);
+    }
+  }, [initialPost, setPost]);
 
   const handleLike = async () => {
     if (!isAuthenticated) {
@@ -25,20 +35,9 @@ const PostCard = ({ post, onUpdate }) => {
     }
 
     try {
-      if (isLiked) {
-        await postAPI.unlike(post.id);
-        setIsLiked(false);
-        setLikeCount((prev) => prev - 1);
-        toast.success('Post unliked');
-      } else {
-        await postAPI.like(post.id);
-        setIsLiked(true);
-        setLikeCount((prev) => prev + 1);
-        toast.success('Post liked');
-      }
-      if (onUpdate) onUpdate();
+      await toggleLike(post.id);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to like post');
+      // Error already handled in context
     }
   };
 
@@ -48,13 +47,11 @@ const PostCard = ({ post, onUpdate }) => {
 
     setIsSubmitting(true);
     try {
-      await postAPI.addComment(post.id, commentText);
+      await addComment(post.id, commentText, user);
       setCommentText('');
-      setCommentCount((prev) => prev + 1);
-      toast.success('Comment added');
-      if (onUpdate) onUpdate();
+      // Comment count is updated optimistically in context
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to add comment');
+      // Error already handled in context
     } finally {
       setIsSubmitting(false);
     }
@@ -109,12 +106,12 @@ const PostCard = ({ post, onUpdate }) => {
           <button
             onClick={handleLike}
             className={`focus:outline-none transition-transform hover:scale-110 ${
-              isLiked ? 'text-red-500' : 'text-gray-700'
+              post.is_liked ? 'text-red-500' : 'text-gray-700'
             }`}
           >
             <svg
               className="w-6 h-6"
-              fill={isLiked ? 'currentColor' : 'none'}
+              fill={post.is_liked ? 'currentColor' : 'none'}
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
@@ -147,8 +144,8 @@ const PostCard = ({ post, onUpdate }) => {
         </div>
 
         {/* Like Count */}
-        {likeCount > 0 && (
-          <p className="font-semibold text-gray-900 mb-2">{likeCount} likes</p>
+        {(post.like_count || 0) > 0 && (
+          <p className="font-semibold text-gray-900 mb-2">{post.like_count} likes</p>
         )}
 
         {/* Caption */}
@@ -165,19 +162,19 @@ const PostCard = ({ post, onUpdate }) => {
         )}
 
         {/* View Comments Link */}
-        {commentCount > 0 && !showComments && (
+        {(post.comment_count || 0) > 0 && !showComments && (
           <button
             onClick={() => setShowComments(true)}
             className="text-gray-500 text-sm mb-2 hover:text-primary"
           >
-            View all {commentCount} comments
+            View all {post.comment_count} comments
           </button>
         )}
 
         {/* Comments Section */}
         {showComments && (
           <div className="mt-4">
-            <CommentList postId={post.id} />
+            <CommentList postId={post.id} key={post.comment_count} />
           </div>
         )}
 

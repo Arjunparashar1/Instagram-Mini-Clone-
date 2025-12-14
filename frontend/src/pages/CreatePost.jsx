@@ -1,15 +1,18 @@
 /**
  * Create post page component.
  * Allows authenticated users to create new posts with image URL and caption.
+ * Adds new post to PostContext for instant UI update.
  */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePost } from '../context/PostContext';
 import { postAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const CreatePost = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { addNewPost } = usePost();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     image_url: '',
@@ -35,7 +38,12 @@ const CreatePost = () => {
     setLoading(true);
 
     try {
-      await postAPI.create(formData);
+      const response = await postAPI.create(formData);
+      const newPost = response.data;
+      
+      // Add new post to context for instant UI update
+      addNewPost(newPost);
+      
       toast.success('Post created successfully!');
       navigate('/');
     } catch (error) {
