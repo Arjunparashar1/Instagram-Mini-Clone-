@@ -71,6 +71,38 @@ def get_post(post_id):
         return jsonify({'error': str(e)}), 500
 
 
+@posts_bp.route('/<int:post_id>', methods=['DELETE'])
+@jwt_required()  # Protected route: only authenticated users can delete posts
+def delete_post(post_id):
+    """
+    Delete a post endpoint.
+    Only the post owner can delete their post.
+    Associated likes and comments are automatically deleted via CASCADE.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        post = Post.query.get(post_id)
+        
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+        
+        # Check if current user is the post owner
+        if post.user_id != current_user_id:
+            return jsonify({'error': 'Unauthorized. You can only delete your own posts.'}), 403
+        
+        # Delete the post (likes and comments will be deleted automatically via CASCADE)
+        db.session.delete(post)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Post deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @posts_bp.route('/user/<int:user_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_user_posts(user_id):

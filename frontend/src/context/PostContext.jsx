@@ -231,6 +231,38 @@ export const PostProvider = ({ children }) => {
     }
   }, [setPost]);
 
+  // Delete a post (removes from all views)
+  const deletePost = useCallback(async (postId) => {
+    try {
+      await postAPI.delete(postId);
+      
+      // Remove post from all state stores
+      setPosts((prev) => {
+        const updated = { ...prev };
+        delete updated[postId];
+        return updated;
+      });
+      
+      // Remove from feed
+      setFeedPosts((prev) => prev.filter((id) => id !== postId));
+      
+      // Remove from user posts
+      setUserPosts((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((username) => {
+          updated[username] = updated[username].filter((id) => id !== postId);
+        });
+        return updated;
+      });
+      
+      toast.success('Post deleted successfully');
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete post');
+      throw error;
+    }
+  }, []);
+
   // Clear all posts (useful for logout)
   const clearPosts = useCallback(() => {
     setPosts({});
@@ -264,6 +296,7 @@ export const PostProvider = ({ children }) => {
     addComment,
     addNewPost,
     refreshPost,
+    deletePost,
     clearPosts,
   };
 

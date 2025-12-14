@@ -13,11 +13,12 @@ import toast from 'react-hot-toast';
 const Profile = () => {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated } = useAuth();
-  const { posts, setPostsBatch, setUserPostsList, getPost } = usePost();
+  const { posts, setPostsBatch, setUserPostsList, getPost, deletePost } = usePost();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
+  const [deletingPostId, setDeletingPostId] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -78,6 +79,30 @@ const Profile = () => {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update follow status');
+    }
+  };
+
+  const handleDeletePost = async (postId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isOwnProfile) return;
+    
+    const confirmed = window.confirm('Are you sure you want to delete this post? This action cannot be undone.');
+    if (!confirmed) return;
+
+    setDeletingPostId(postId);
+    try {
+      await deletePost(postId);
+      // Update profile posts count
+      setProfile((prev) => ({
+        ...prev,
+        posts: prev.posts ? prev.posts.filter((p) => p.id !== postId) : [],
+      }));
+    } catch (error) {
+      // Error already handled in context
+    } finally {
+      setDeletingPostId(null);
     }
   };
 
@@ -160,21 +185,22 @@ const Profile = () => {
           <h2 className="text-xl font-bold text-gray-900 mb-4">Posts</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {profilePosts.map((post) => (
-              <Link
-                key={post.id}
-                to={`/post/${post.id}`}
-                className="relative aspect-square group"
-              >
-                <img
-                  src={post.image_url}
-                  alt={post.caption || 'Post'}
-                  className="w-full h-full object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/300x300?text=Image+Not+Found';
-                  }}
-                />
+              <div key={post.id} className="relative aspect-square group">
+                <Link
+                  to={`/post/${post.id}`}
+                  className="block w-full h-full"
+                >
+                  <img
+                    src={post.image_url}
+                    alt={post.caption || 'Post'}
+                    className="w-full h-full object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/300x300?text=Image+Not+Found';
+                    }}
+                  />
+                </Link>
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center transition-all">
                   <div className="opacity-0 group-hover:opacity-100 text-white flex items-center space-x-4">
                     <span className="flex items-center space-x-1">
@@ -191,7 +217,29 @@ const Profile = () => {
                     </span>
                   </div>
                 </div>
-              </Link>
+                {isOwnProfile && (
+                  <button
+                    onClick={(e) => handleDeletePost(post.id, e)}
+                    disabled={deletingPostId === post.id}
+                    className="absolute top-2 right-2 text-white bg-red-500 hover:bg-red-600 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete post"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

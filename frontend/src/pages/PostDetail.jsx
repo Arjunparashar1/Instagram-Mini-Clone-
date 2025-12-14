@@ -14,14 +14,18 @@ import toast from 'react-hot-toast';
 const PostDetail = () => {
   const { id } = useParams();
   const { isAuthenticated, user } = useAuth();
-  const { getPost, setPost, toggleLike, addComment, refreshPost } = usePost();
+  const { getPost, setPost, toggleLike, addComment, refreshPost, deletePost } = usePost();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Get post from context (may already be loaded)
   const post = getPost(id);
+  
+  // Check if current user is the post owner
+  const isOwnPost = isAuthenticated && user && post && post.user_id === user.id;
 
   useEffect(() => {
     fetchPost();
@@ -75,6 +79,24 @@ const PostDetail = () => {
       // Error already handled in context
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!isOwnPost) return;
+    
+    const confirmed = window.confirm('Are you sure you want to delete this post? This action cannot be undone.');
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await deletePost(id);
+      // Navigate to feed after successful deletion
+      navigate('/');
+    } catch (error) {
+      // Error already handled in context
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -136,19 +158,43 @@ const PostDetail = () => {
           {/* Post Details */}
           <div className="md:w-1/2 flex flex-col">
             {/* Header */}
-            <div className="flex items-center space-x-3 p-4 border-b border-gray-200">
-              <img
-                src={post.profile_pic_url || 'https://via.placeholder.com/150'}
-                alt={post.username}
-                className="w-10 h-10 rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <Link
-                to={`/profile/${post.username}`}
-                className="font-semibold text-gray-900 hover:text-primary"
-              >
-                {post.username}
-              </Link>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <img
+                  src={post.profile_pic_url || 'https://via.placeholder.com/150'}
+                  alt={post.username}
+                  className="w-10 h-10 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <Link
+                  to={`/profile/${post.username}`}
+                  className="font-semibold text-gray-900 hover:text-primary"
+                >
+                  {post.username}
+                </Link>
+              </div>
+              {isOwnPost && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-500 hover:text-red-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Delete post"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
 
             {/* Comments Section */}

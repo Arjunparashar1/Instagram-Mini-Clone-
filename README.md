@@ -26,7 +26,7 @@ InstaMini is a simplified Instagram-style social media platform that demonstrate
 
 ### Social Features
 - **Follow System**: Follow/unfollow users with many-to-many relationship
-- **Posts**: Create posts with image URLs and captions
+- **Posts**: Create and delete posts with image URLs and captions
 - **Likes**: Like/unlike posts with toggle functionality
 - **Comments**: Add comments to posts with real-time updates
 - **Feed**: Personalized feed showing posts from followed users and own posts
@@ -213,6 +213,7 @@ The database is automatically created when you first run the Flask app. The SQLi
 ### Posts
 - `POST /api/posts` - Create a new post (protected)
 - `GET /api/posts/:post_id` - Get post details
+- `DELETE /api/posts/:post_id` - Delete a post (protected, owner only)
 - `GET /api/posts/user/:user_id` - Get user's posts (paginated)
 - `GET /api/posts/feed` - Get personalized feed (protected, paginated)
 
@@ -309,7 +310,7 @@ The database is automatically created when you first run the Flask app. The SQLi
 - Image upload functionality (currently uses URLs)
 - Real-time notifications using WebSockets
 - Search functionality for users and posts
-- Edit/delete posts and comments
+- Edit posts and comments
 - Direct messaging between users
 - Stories feature
 - Hashtags and mentions

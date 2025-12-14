@@ -62,6 +62,7 @@ export const userAPI = {
 export const postAPI = {
   create: (data) => api.post('/api/posts', data),
   getById: (postId) => api.get(`/api/posts/${postId}`),
+  delete: (postId) => api.delete(`/api/posts/${postId}`),
   getUserPosts: (userId, page = 1, limit = 10) => 
     api.get(`/api/posts/user/${userId}`, { params: { page, limit } }),
   like: (postId) => api.post(`/api/posts/${postId}/like`),
