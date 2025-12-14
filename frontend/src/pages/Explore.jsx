@@ -129,20 +129,20 @@ const Explore = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Page Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Explore</h1>
         <p className="text-gray-600">Discover and follow other users</p>
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="relative">
           <input
             type="text"
             placeholder="Search users by username..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent shadow-sm"
           />
           <svg
             className="absolute left-3 top-3.5 h-5 w-5 text-gray-400"
@@ -168,7 +168,7 @@ const Explore = () => {
             return (
               <div
                 key={user.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-card-hover transition-all"
               >
                 <div className="flex items-center space-x-4">
                   {/* Profile Picture */}
@@ -209,7 +209,7 @@ const Explore = () => {
                   {/* Follow Button */}
                   <button
                     onClick={() => handleFollow(user.id, user.username, isFollowing)}
-                    className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-colors ${
+                    className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all hover:shadow-md active:scale-98 ${
                       isFollowing
                         ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                         : 'bg-primary text-white hover:bg-blue-600'
@@ -223,7 +223,7 @@ const Explore = () => {
           })}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-xl shadow-card">
           {searchQuery.trim() ? (
             <p className="text-gray-500">No users found matching "{searchQuery}"</p>
           ) : (

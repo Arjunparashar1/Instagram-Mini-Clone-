@@ -142,7 +142,7 @@ const PostDetail = () => {
         <span>Back</span>
       </button>
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-card overflow-hidden">
         <div className="md:flex">
           {/* Post Image */}
           <div className="md:w-1/2">
@@ -227,8 +227,8 @@ const PostDetail = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleLike}
-                  className={`focus:outline-none transition-transform hover:scale-110 ${
-                    post?.is_liked ? 'text-red-500' : 'text-gray-700'
+                  className={`focus:outline-none transition-all hover:scale-110 active:scale-95 ${
+                    post?.is_liked ? 'text-red-500' : 'text-gray-700 hover:text-red-500'
                   }`}
                 >
                   <svg
@@ -255,21 +255,21 @@ const PostDetail = () => {
 
               {/* Comment Form */}
               {isAuthenticated && (
-                <form onSubmit={handleComment} className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                <form onSubmit={handleComment} className="flex items-center space-x-2 pt-3 border-t border-gray-100">
                   <input
                     type="text"
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                     disabled={isSubmitting}
                   />
                   <button
                     type="submit"
                     disabled={!commentText.trim() || isSubmitting}
-                    className="text-primary font-semibold hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="text-primary font-semibold hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors px-3 py-2"
                   >
-                    Post
+                    {isSubmitting ? 'Posting...' : 'Post'}
                   </button>
                 </form>
               )}

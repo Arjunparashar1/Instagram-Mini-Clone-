@@ -36,11 +36,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only redirect on 401 if we're not already on the login page
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
       // Token expired or invalid - clear storage and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Use a small delay to avoid redirect loops
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     }
     return Promise.reject(error);
   }
@@ -87,6 +91,7 @@ export const postAPI = {
   unlike: (postId) => api.delete(`/api/posts/${postId}/like`),
   addComment: (postId, text) => api.post(`/api/posts/${postId}/comments`, { text }),
   getComments: (postId) => api.get(`/api/posts/${postId}/comments`),
+  deleteComment: (commentId) => api.delete(`/api/comments/${commentId}`),
   getFeed: (page = 1, limit = 10) => 
     api.get('/api/posts/feed', { params: { page, limit } }),
 };

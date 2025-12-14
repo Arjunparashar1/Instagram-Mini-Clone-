@@ -55,6 +55,13 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ username, password });
       const { token: newToken, user: userData } = response.data;
 
+      if (!newToken || !userData) {
+        return {
+          success: false,
+          error: 'Invalid response from server',
+        };
+      }
+
       // Store token and user in localStorage
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -63,9 +70,17 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
+      // Handle network errors
+      if (!error.response) {
+        return {
+          success: false,
+          error: 'Network error. Please check if the server is running.',
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed',
+        error: error.response?.data?.error || error.message || 'Login failed',
       };
     }
   };
@@ -74,19 +89,28 @@ export const AuthProvider = ({ children }) => {
   const signup = async (username, email, password) => {
     try {
       const response = await authAPI.signup({ username, email, password });
-      const { token: newToken, user: userData } = response.data;
-
-      // Store token and user in localStorage
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      setToken(newToken);
-      setUser(userData);
-      return { success: true };
+      
+      // Signup successful - do NOT store token or user data
+      // User must login separately to get authenticated
+      // Clear any existing auth state to prevent accidental auto-login
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+      
+      return { success: true, message: response.data.message || 'Account created successfully' };
     } catch (error) {
+      console.error('Signup error:', error);
+      // Handle network errors
+      if (!error.response) {
+        return {
+          success: false,
+          error: 'Network error. Please check if the server is running.',
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.error || 'Signup failed',
+        error: error.response?.data?.error || error.message || 'Signup failed',
       };
     }
   };

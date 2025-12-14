@@ -1,6 +1,6 @@
 /**
  * Signup page component with form validation.
- * Creates new user account and automatically logs in on success.
+ * Creates new user account and redirects to login page on success.
  */
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -44,8 +44,8 @@ const Signup = () => {
     const result = await signup(formData.username, formData.email, formData.password);
 
     if (result.success) {
-      toast.success('Account created successfully!');
-      navigate('/');
+      toast.success(result.message || 'Account created successfully. Please login.');
+      navigate('/login');
     } else {
       toast.error(result.error || 'Signup failed');
     }
@@ -62,13 +62,13 @@ const Signup = () => {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link to="/login" className="font-medium text-primary hover:text-blue-600">
+            <Link to="/login" className="font-medium text-primary hover:text-blue-600 transition-colors">
               sign in to your existing account
             </Link>
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
+          <div className="rounded-lg shadow-sm space-y-4">
             <div>
               <label htmlFor="username" className="sr-only">
                 Username
@@ -78,7 +78,7 @@ const Signup = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
                 placeholder="Username"
                 value={formData.username}
                 onChange={handleChange}
@@ -93,7 +93,7 @@ const Signup = () => {
                 name="email"
                 type="email"
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleChange}
@@ -108,7 +108,7 @@ const Signup = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
                 placeholder="Password (min 6 characters)"
                 value={formData.password}
                 onChange={handleChange}
@@ -123,7 +123,7 @@ const Signup = () => {
                 name="confirmPassword"
                 type="password"
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
@@ -135,7 +135,7 @@ const Signup = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-md active:scale-98"
             >
               {loading ? 'Creating account...' : 'Sign up'}
             </button>

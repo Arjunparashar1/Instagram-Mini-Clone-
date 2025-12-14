@@ -15,7 +15,7 @@ if str(parent_dir) not in sys.path:
 from flask import Flask, jsonify, request
 from backend.config import Config
 from backend.extensions import db, jwt, cors
-from backend.routes import auth_bp, users_bp, posts_bp
+from backend.routes import auth_bp, users_bp, posts_bp, comments_bp
 from backend.models import User, Post, Comment, follows, likes
 
 
@@ -39,6 +39,7 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(posts_bp)
+    app.register_blueprint(comments_bp)
     
     # Create database tables (for development; use migrations in production)
     with app.app_context():

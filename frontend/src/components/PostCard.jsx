@@ -94,9 +94,9 @@ const PostCard = ({ post: initialPost }) => {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg mb-6 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-xl mb-6 shadow-card">
       {/* Post Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center space-x-3">
           <img
             src={post.profile_pic_url || DEFAULT_AVATAR}
@@ -109,11 +109,11 @@ const PostCard = ({ post: initialPost }) => {
           />
           <Link
             to={`/profile/${post.username}`}
-            className="font-semibold text-gray-900 hover:text-primary"
+            className="font-semibold text-gray-900 hover:text-primary transition-colors"
           >
             {post.username}
           </Link>
-          <span className="text-gray-500 text-sm">{formatDate(post.created_at)}</span>
+          <span className="text-gray-500 text-xs ml-2">{formatDate(post.created_at)}</span>
         </div>
         {isOwnPost && (
           <button
@@ -152,12 +152,12 @@ const PostCard = ({ post: initialPost }) => {
       />
 
       {/* Post Actions */}
-      <div className="p-4">
-        <div className="flex items-center space-x-4 mb-2">
+      <div className="p-4 pt-3">
+        <div className="flex items-center space-x-4 mb-3">
           <button
             onClick={handleLike}
-            className={`focus:outline-none transition-transform hover:scale-110 ${
-              post.is_liked ? 'text-red-500' : 'text-gray-700'
+            className={`focus:outline-none transition-all hover:scale-110 active:scale-95 ${
+              post.is_liked ? 'text-red-500' : 'text-gray-700 hover:text-red-500'
             }`}
           >
             <svg
@@ -176,7 +176,7 @@ const PostCard = ({ post: initialPost }) => {
           </button>
           <button
             onClick={() => setShowComments(!showComments)}
-            className="text-gray-700 hover:text-primary focus:outline-none"
+            className="text-gray-700 hover:text-primary focus:outline-none transition-colors"
           >
             <svg
               className="w-6 h-6"
@@ -201,14 +201,14 @@ const PostCard = ({ post: initialPost }) => {
 
         {/* Caption */}
         {post.caption && (
-          <div className="mb-2">
+          <div className="mb-3">
             <Link
               to={`/profile/${post.username}`}
-              className="font-semibold text-gray-900 hover:text-primary mr-2"
+              className="font-semibold text-gray-900 hover:text-primary mr-2 transition-colors"
             >
               {post.username}
             </Link>
-            <span className="text-gray-800">{post.caption}</span>
+            <span className="text-gray-800 text-sm leading-relaxed">{post.caption}</span>
           </div>
         )}
 
@@ -231,21 +231,21 @@ const PostCard = ({ post: initialPost }) => {
 
         {/* Comment Form */}
         {isAuthenticated && (
-          <form onSubmit={handleComment} className="mt-4 flex items-center space-x-2">
+          <form onSubmit={handleComment} className="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-2">
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             />
             <button
               type="submit"
               disabled={!commentText.trim() || isSubmitting}
-              className="text-primary font-semibold hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="text-primary font-semibold hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors px-3 py-2"
             >
-              Post
+              {isSubmitting ? 'Posting...' : 'Post'}
             </button>
           </form>
         )}

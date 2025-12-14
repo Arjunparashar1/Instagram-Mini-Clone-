@@ -49,13 +49,9 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
         
-        # Generate JWT token for immediate login after signup
-        access_token = create_access_token(identity=new_user.id)
-        
+        # Return success message without token - user must login separately
         return jsonify({
-            'message': 'User created successfully',
-            'token': access_token,
-            'user': new_user.to_dict()
+            'message': 'Signup successful. Please login to continue.'
         }), 201
         
     except Exception as e:

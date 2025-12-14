@@ -3,7 +3,7 @@
  * Implements pagination for loading more posts.
  * Uses PostContext for state management - no page refresh needed!
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePost } from '../context/PostContext';
 import { postAPI } from '../services/api';
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const Feed = () => {
   const { isAuthenticated } = useAuth();
-  const { feedPosts, posts, setPostsBatch, setFeed, addToFeed, setLoading } = usePost();
+  const { feedPosts, posts, setPostsBatch, setFeed, addToFeed } = usePost();
   const [loading, setLocalLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -23,15 +23,7 @@ const Feed = () => {
     return feedPosts.map((postId) => posts[postId]).filter(Boolean);
   }, [feedPosts, posts]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchFeed();
-    } else {
-      setLocalLoading(false);
-    }
-  }, [isAuthenticated, page]);
-
-  const fetchFeed = async () => {
+  const fetchFeed = useCallback(async () => {
     try {
       if (page === 1) {
         setLocalLoading(true);
@@ -54,12 +46,22 @@ const Feed = () => {
 
       setHasMore(response.data.has_next || false);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to load feed');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load feed';
+      toast.error(errorMessage);
+      console.error('Feed loading error:', error);
     } finally {
       setLocalLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [page, setPostsBatch, setFeed, addToFeed]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFeed();
+    } else {
+      setLocalLoading(false);
+    }
+  }, [isAuthenticated, fetchFeed]);
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
@@ -99,7 +101,7 @@ const Feed = () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Feed</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-8">Your Feed</h1>
       <div className="space-y-6">
         {postsList.map((post) => (
           <PostCard key={post.id} post={post} />
@@ -107,11 +109,11 @@ const Feed = () => {
       </div>
 
       {hasMore && (
-        <div className="mt-8 text-center">
+        <div className="mt-10 text-center">
           <button
             onClick={handleLoadMore}
             disabled={loadingMore}
-            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary text-white px-8 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-md active:scale-98 font-medium"
           >
             {loadingMore ? 'Loading...' : 'Load More'}
           </button>

@@ -30,6 +30,12 @@ const Profile = () => {
   const [showEditUsername, setShowEditUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -49,6 +55,10 @@ const Profile = () => {
       
       setProfile(profileData);
       setFollowing(profileData.is_following || false);
+      
+      // Clear followers/following lists when profile changes
+      setFollowersList([]);
+      setFollowingList([]);
       
       // Store posts in context
       if (profileData.posts && profileData.posts.length > 0) {
@@ -294,6 +304,56 @@ const Profile = () => {
     }
   };
 
+  const fetchFollowers = async () => {
+    if (followersList.length > 0) {
+      // Already loaded, just show modal
+      setShowFollowersModal(true);
+      return;
+    }
+
+    setLoadingFollowers(true);
+    try {
+      const response = await userAPI.getFollowers(profile.id);
+      const followers = (response.data.followers || []).map((user) => ({
+        ...user,
+        profile_pic_url: user.profile_pic_url && user.profile_pic_url.startsWith('/static')
+          ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.profile_pic_url}`
+          : user.profile_pic_url || DEFAULT_AVATAR,
+      }));
+      setFollowersList(followers);
+      setShowFollowersModal(true);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to load followers');
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const fetchFollowing = async () => {
+    if (followingList.length > 0) {
+      // Already loaded, just show modal
+      setShowFollowingModal(true);
+      return;
+    }
+
+    setLoadingFollowing(true);
+    try {
+      const response = await userAPI.getFollowing(profile.id);
+      const following = (response.data.following || []).map((user) => ({
+        ...user,
+        profile_pic_url: user.profile_pic_url && user.profile_pic_url.startsWith('/static')
+          ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.profile_pic_url}`
+          : user.profile_pic_url || DEFAULT_AVATAR,
+      }));
+      setFollowingList(following);
+      setShowFollowingModal(true);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to load following');
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 text-center">
@@ -315,7 +375,7 @@ const Profile = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Profile Header */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 mb-6 shadow-card">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-8">
           <div className="relative">
             <img
@@ -379,14 +439,14 @@ const Profile = () => {
               {isOwnProfile ? (
                 <Link
                   to="/create-post"
-                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all hover:shadow-md active:scale-98"
                 >
                   Create Post
                 </Link>
               ) : (
                 <button
                   onClick={handleFollow}
-                  className={`px-4 py-2 rounded-lg font-semibold ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all hover:shadow-md active:scale-98 ${
                     following
                       ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                       : 'bg-primary text-white hover:bg-blue-600'
@@ -401,14 +461,22 @@ const Profile = () => {
                 <span className="font-semibold">{profilePosts?.length || 0}</span>
                 <span className="text-gray-600 ml-1">posts</span>
               </div>
-              <div>
+              <button
+                onClick={fetchFollowers}
+                className="hover:opacity-70 transition-opacity cursor-pointer"
+                disabled={loadingFollowers}
+              >
                 <span className="font-semibold">{profile.followers_count || 0}</span>
                 <span className="text-gray-600 ml-1">followers</span>
-              </div>
-              <div>
+              </button>
+              <button
+                onClick={fetchFollowing}
+                className="hover:opacity-70 transition-opacity cursor-pointer"
+                disabled={loadingFollowing}
+              >
                 <span className="font-semibold">{profile.following_count || 0}</span>
                 <span className="text-gray-600 ml-1">following</span>
-              </div>
+              </button>
             </div>
             {profile.email && (
               <p className="text-gray-600 text-sm">{profile.email}</p>
@@ -577,11 +645,109 @@ const Profile = () => {
         )}
       </div>
 
+      {/* Followers Modal */}
+      {showFollowersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowFollowersModal(false)}>
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-card-hover" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Followers</h2>
+              <button
+                onClick={() => setShowFollowersModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors rounded-lg p-1 hover:bg-gray-100"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              {loadingFollowers ? (
+                <div className="text-center py-8 text-gray-500">Loading...</div>
+              ) : followersList.length > 0 ? (
+                <div className="space-y-4">
+                  {followersList.map((user) => (
+                    <Link
+                      key={user.id}
+                      to={`/profile/${user.username}`}
+                      onClick={() => setShowFollowersModal(false)}
+                      className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    >
+                      <img
+                        src={user.profile_pic_url || DEFAULT_AVATAR}
+                        alt={user.username}
+                        className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                        onError={(e) => {
+                          e.target.src = DEFAULT_AVATAR;
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{user.username}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">No followers yet</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Following Modal */}
+      {showFollowingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowFollowingModal(false)}>
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-card-hover" onClick={(e) => e.stopPropagation()}>
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Following</h2>
+              <button
+                onClick={() => setShowFollowingModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors rounded-lg p-1 hover:bg-gray-100"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              {loadingFollowing ? (
+                <div className="text-center py-8 text-gray-500">Loading...</div>
+              ) : followingList.length > 0 ? (
+                <div className="space-y-4">
+                  {followingList.map((user) => (
+                    <Link
+                      key={user.id}
+                      to={`/profile/${user.username}`}
+                      onClick={() => setShowFollowingModal(false)}
+                      className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    >
+                      <img
+                        src={user.profile_pic_url || DEFAULT_AVATAR}
+                        alt={user.username}
+                        className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                        onError={(e) => {
+                          e.target.src = DEFAULT_AVATAR;
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{user.username}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">Not following anyone yet</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Posts Grid */}
       {profilePosts && profilePosts.length > 0 ? (
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Posts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Posts</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
             {profilePosts.map((post) => (
               <div key={post.id} className="relative aspect-square group">
                 <Link
@@ -591,7 +757,7 @@ const Profile = () => {
                   <img
                     src={post.image_url}
                     alt={post.caption || 'Post'}
-                    className="w-full h-full object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                    className="w-full h-full object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity shadow-sm"
                     referrerPolicy="no-referrer"
                     loading="lazy"
                     onError={(e) => {
@@ -642,7 +808,7 @@ const Profile = () => {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-xl shadow-card">
           <p className="text-gray-500">No posts yet</p>
         </div>
       )}

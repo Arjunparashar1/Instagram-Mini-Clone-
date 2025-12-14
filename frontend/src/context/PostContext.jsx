@@ -240,6 +240,31 @@ export const PostProvider = ({ children }) => {
     }
   }, [posts, updatePost]);
 
+  // Delete comment (optimistic update)
+  const deleteComment = useCallback(async (commentId, postId) => {
+    const post = posts[postId];
+    if (!post) return;
+
+    // Optimistic update - decrement comment count
+    const oldCommentCount = post.comment_count || 0;
+    updatePost(postId, {
+      comment_count: Math.max(0, oldCommentCount - 1),
+    });
+
+    try {
+      await postAPI.deleteComment(commentId);
+      // Comment is removed from UI by CommentList component
+      return true;
+    } catch (error) {
+      // Revert on error
+      updatePost(postId, {
+        comment_count: oldCommentCount,
+      });
+      toast.error(error.response?.data?.error || 'Failed to delete comment');
+      throw error;
+    }
+  }, [posts, updatePost]);
+
   // Add new post to feed
   const addNewPost = useCallback((post) => {
     setPost(post);
@@ -322,6 +347,7 @@ export const PostProvider = ({ children }) => {
     unlikePost,
     toggleLike,
     addComment,
+    deleteComment,
     addNewPost,
     refreshPost,
     deletePost,
