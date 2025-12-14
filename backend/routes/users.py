@@ -319,3 +319,65 @@ def upload_profile_image():
                 pass
         return jsonify({'error': str(e)}), 500
 
+
+@users_bp.route('/edit-username', methods=['PUT', 'PATCH'])
+@jwt_required()  # Protected route: requires valid JWT token
+def edit_username():
+    """
+    Edit username endpoint.
+    Allows authenticated users to update their own username.
+    Validates username uniqueness, length, and format.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Validate required field
+        if not data or 'username' not in data:
+            return jsonify({'error': 'Username is required'}), 400
+        
+        new_username = data['username'].strip()
+        
+        # Validate username is not empty
+        if not new_username:
+            return jsonify({'error': 'Username cannot be empty'}), 400
+        
+        # Validate username length (3-30 characters)
+        if len(new_username) < 3:
+            return jsonify({'error': 'Username must be at least 3 characters long'}), 400
+        
+        if len(new_username) > 30:
+            return jsonify({'error': 'Username must be at most 30 characters long'}), 400
+        
+        # Validate username format (alphanumeric and underscores only)
+        if not new_username.replace('_', '').isalnum():
+            return jsonify({
+                'error': 'Username can only contain letters, numbers, and underscores'
+            }), 400
+        
+        # Check if username is already taken by another user
+        existing_user = User.query.filter_by(username=new_username).first()
+        if existing_user and existing_user.id != current_user_id:
+            return jsonify({'error': 'Username already taken'}), 400
+        
+        # Check if username is the same as current username
+        if new_username == current_user.username:
+            return jsonify({'error': 'New username must be different from current username'}), 400
+        
+        # Update username
+        current_user.username = new_username
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Username updated successfully',
+            'user': current_user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

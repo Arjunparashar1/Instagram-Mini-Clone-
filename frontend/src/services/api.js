@@ -67,11 +67,18 @@ export const userAPI = {
     // Content-Type will be set automatically by axios for FormData
     return api.post('/api/users/profile-image/upload', formData);
   },
+  editUsername: (username) => api.put('/api/users/edit-username', { username }),
 };
 
 // Post API endpoints
 export const postAPI = {
-  create: (data) => api.post('/api/posts', data),
+  create: (imageFile, caption = '') => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('caption', caption);
+    // Content-Type will be set automatically by axios for FormData
+    return api.post('/api/posts', formData);
+  },
   getById: (postId) => api.get(`/api/posts/${postId}`),
   delete: (postId) => api.delete(`/api/posts/${postId}`),
   getUserPosts: (userId, page = 1, limit = 10) => 

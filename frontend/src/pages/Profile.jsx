@@ -27,6 +27,9 @@ const Profile = () => {
   const [isUpdatingProfilePic, setIsUpdatingProfilePic] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadMethod, setUploadMethod] = useState('url'); // 'url' or 'upload'
+  const [showEditUsername, setShowEditUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -231,6 +234,66 @@ const Profile = () => {
     e.target.src = DEFAULT_AVATAR;
   };
 
+  const handleEditUsername = async (e) => {
+    e.preventDefault();
+    
+    if (!newUsername.trim()) {
+      toast.error('Please enter a username');
+      return;
+    }
+
+    // Basic client-side validation
+    if (newUsername.length < 3) {
+      toast.error('Username must be at least 3 characters long');
+      return;
+    }
+
+    if (newUsername.length > 30) {
+      toast.error('Username must be at most 30 characters long');
+      return;
+    }
+
+    // Check if username contains only alphanumeric and underscores
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      toast.error('Username can only contain letters, numbers, and underscores');
+      return;
+    }
+
+    // Check if username is the same as current
+    if (newUsername === profile.username) {
+      toast.error('New username must be different from current username');
+      return;
+    }
+
+    setIsUpdatingUsername(true);
+    try {
+      const response = await userAPI.editUsername(newUsername);
+      const updatedUser = response.data.user;
+      
+      // Update profile state
+      setProfile((prev) => ({
+        ...prev,
+        username: updatedUser.username,
+      }));
+      
+      // Update auth context user data
+      updateUser(updatedUser);
+      
+      // Reset form
+      setNewUsername('');
+      setShowEditUsername(false);
+      
+      // Navigate to new username profile page
+      navigate(`/profile/${updatedUser.username}`, { replace: true });
+      
+      toast.success('Username updated successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update username');
+    } finally {
+      setIsUpdatingUsername(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 text-center">
@@ -286,7 +349,33 @@ const Profile = () => {
           </div>
           <div className="flex-1 text-center md:text-left">
             <div className="flex flex-col md:flex-row items-center md:items-center space-y-4 md:space-y-0 md:space-x-6 mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">{profile.username}</h1>
+              <div className="flex items-center space-x-2">
+                <h1 className="text-2xl font-bold text-gray-900">{profile.username}</h1>
+                {isOwnProfile && !showEditUsername && (
+                  <button
+                    onClick={() => {
+                      setShowEditUsername(true);
+                      setNewUsername(profile.username);
+                    }}
+                    className="text-gray-500 hover:text-primary transition-colors"
+                    title="Edit username"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
               {isOwnProfile ? (
                 <Link
                   to="/create-post"
@@ -327,6 +416,54 @@ const Profile = () => {
           </div>
         </div>
         
+        {/* Edit Username Form */}
+        {isOwnProfile && showEditUsername && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <form onSubmit={handleEditUsername} className="space-y-4">
+              <div>
+                <label htmlFor="newUsername" className="block text-sm font-medium text-gray-700 mb-2">
+                  New Username
+                </label>
+                <input
+                  type="text"
+                  id="newUsername"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Enter new username"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={isUpdatingUsername}
+                  pattern="[a-zA-Z0-9_]+"
+                  minLength={3}
+                  maxLength={30}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  3-30 characters, letters, numbers, and underscores only
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  disabled={isUpdatingUsername || !newUsername.trim() || newUsername === profile.username}
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isUpdatingUsername ? 'Updating...' : 'Update Username'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditUsername(false);
+                    setNewUsername('');
+                  }}
+                  disabled={isUpdatingUsername}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Update Profile Picture Form */}
         {isOwnProfile && showUpdateProfilePic && (
           <div className="mt-6 pt-6 border-t border-gray-200">

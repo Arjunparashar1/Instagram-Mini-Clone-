@@ -23,6 +23,7 @@ class Config:
     # File upload configuration
     BASE_DIR = Path(__file__).parent.parent
     UPLOAD_FOLDER = BASE_DIR / 'backend' / 'static' / 'profile_pics'
+    POST_IMAGES_FOLDER = BASE_DIR / 'backend' / 'static' / 'post_images'
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB max file size
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 

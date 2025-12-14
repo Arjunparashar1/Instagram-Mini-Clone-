@@ -26,12 +26,13 @@ InstaMini is a simplified Instagram-style social media platform that demonstrate
 
 ### Social Features
 - **Follow System**: Follow/unfollow users with many-to-many relationship
-- **Posts**: Create and delete posts with image URLs and captions
+- **Posts**: Create and delete posts with images uploaded from local computer or image URLs, with captions
 - **Likes**: Like/unlike posts with toggle functionality
 - **Comments**: Add comments to posts with real-time updates
 - **Feed**: Personalized feed showing posts from followed users and own posts
 - **Profile**: View user profiles with posts grid, followers, and following counts
 - **Profile Pictures**: Update profile picture via image URL or file upload from local computer, displayed across posts and comments with fallback avatars
+- **Username Editing**: Edit your own username with validation (unique, length, format checks)
 
 ### User Experience
 - Clean, modern, responsive UI with Tailwind CSS
@@ -206,6 +207,7 @@ The database is automatically created when you first run the Flask app. The SQLi
 
 ### Users
 - `GET /api/users/:username` - Get user profile
+- `PUT /api/users/edit-username` - Edit username (protected, own profile only)
 - `PUT /api/users/profile-image` - Update user's profile picture via URL (protected)
 - `POST /api/users/profile-image/upload` - Upload profile picture from local file (protected)
 - `POST /api/users/follow/:user_id` - Follow a user
@@ -214,7 +216,7 @@ The database is automatically created when you first run the Flask app. The SQLi
 - `GET /api/users/:user_id/following` - Get users that a user follows
 
 ### Posts
-- `POST /api/posts` - Create a new post (protected)
+- `POST /api/posts` - Create a new post with image file upload or image URL (protected, accepts multipart/form-data)
 - `GET /api/posts/:post_id` - Get post details
 - `DELETE /api/posts/:post_id` - Delete a post (protected, owner only)
 - `GET /api/posts/user/:user_id` - Get user's posts (paginated)
@@ -266,26 +268,36 @@ The database is automatically created when you first run the Flask app. The SQLi
    - Local state for component-specific data
    - Optimistic UI updates for better UX (likes, comments)
 
-7. **Security Considerations**
+7. **File Upload Handling**
+   - Implemented secure file upload for post images and profile pictures
+   - File type validation (PNG, JPG, JPEG, GIF) on both client and server
+   - File size limits (5MB) to prevent abuse
+   - Unique filename generation using UUID to prevent conflicts
+   - Secure filename handling with Werkzeug's secure_filename
+   - Automatic directory creation for upload folders
+   - Error handling with file cleanup on database failures
+
+8. **Security Considerations**
    - Password hashing with Werkzeug (bcrypt-based)
    - JWT tokens for stateless authentication
    - Protected routes on both frontend and backend
    - Input validation on both client and server side
    - SQL injection prevention via SQLAlchemy ORM
+   - File upload validation to prevent malicious file uploads
 
-8. **Performance Optimizations**
+9. **Performance Optimizations**
    - Database indexing on frequently queried fields (username, email, created_at)
    - Pagination to limit data transfer
    - Image lazy loading (can be added)
    - Efficient queries using SQLAlchemy relationships
 
-9. **Code Quality**
+10. **Code Quality**
    - Well-commented code explaining key decisions
    - Consistent naming conventions
    - Separation of concerns (API layer, components, pages)
    - Reusable components (PostCard, CommentList)
 
-10. **Scalability Considerations**
+11. **Scalability Considerations**
     - Easy to switch from SQLite to PostgreSQL
     - Blueprint structure allows easy addition of new features
     - Modular frontend components for easy extension
@@ -310,7 +322,6 @@ The database is automatically created when you first run the Flask app. The SQLi
 
 ## 🔮 Future Enhancements
 
-- Image upload functionality (currently uses URLs)
 - Real-time notifications using WebSockets
 - Search functionality for users and posts
 - Edit posts and comments

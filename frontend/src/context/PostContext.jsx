@@ -27,6 +27,7 @@ const normalizePost = (post) => {
   return {
     ...post,
     profile_pic_url: normalizeProfilePicUrl(post.profile_pic_url),
+    image_url: normalizeProfilePicUrl(post.image_url), // Normalize post image URLs too
   };
 };
 

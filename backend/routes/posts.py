@@ -2,7 +2,10 @@
 Post-related routes for creating posts, likes, comments, and feed.
 Demonstrates CRUD operations, many-to-many relationships, and pagination.
 """
-from flask import Blueprint, request, jsonify
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from backend.extensions import db
 from backend.models import Post, User, Comment, likes
@@ -10,22 +13,69 @@ from backend.models import Post, User, Comment, likes
 posts_bp = Blueprint('posts', __name__, url_prefix='/api/posts')
 
 
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+
+
 @posts_bp.route('', methods=['POST'])
 @jwt_required()  # Protected route: only authenticated users can create posts
 def create_post():
     """
     Create a new post endpoint.
-    Requires authentication and validates image URL and caption.
+    Accepts either file upload (image file) or image URL.
+    Requires authentication and validates image file/URL and caption.
     """
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        image_url = None
+        file_path = None
         
-        if not data or not data.get('image_url'):
-            return jsonify({'error': 'Image URL is required'}), 400
+        # Check if file is uploaded (multipart/form-data)
+        if 'image' in request.files:
+            file = request.files['image']
+            
+            # Check if file was actually selected
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
+            
+            # Validate file type
+            if not allowed_file(file.filename):
+                return jsonify({
+                    'error': 'Invalid file type. Allowed types: png, jpg, jpeg, gif'
+                }), 400
+            
+            # Ensure upload directory exists
+            upload_folder = current_app.config['POST_IMAGES_FOLDER']
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # Generate unique filename to prevent conflicts
+            file_ext = file.filename.rsplit('.', 1)[1].lower()
+            unique_filename = f"{current_user_id}_{uuid.uuid4().hex[:8]}.{file_ext}"
+            secure_name = secure_filename(unique_filename)
+            
+            # Save file
+            file_path = os.path.join(upload_folder, secure_name)
+            file.save(file_path)
+            
+            # Generate URL path for the uploaded image
+            image_url = f"/static/post_images/{secure_name}"
         
-        image_url = data['image_url'].strip()
-        caption = data.get('caption', '').strip()
+        # If no file uploaded, check for image_url in JSON (backward compatibility)
+        elif request.is_json:
+            data = request.get_json()
+            if not data or not data.get('image_url'):
+                return jsonify({'error': 'Image file or image URL is required'}), 400
+            image_url = data['image_url'].strip()
+        else:
+            return jsonify({'error': 'Image file or image URL is required'}), 400
+        
+        # Get caption from form data or JSON
+        if request.is_json:
+            caption = request.get_json().get('caption', '').strip()
+        else:
+            caption = request.form.get('caption', '').strip()
         
         # Create new post
         new_post = Post(
@@ -44,6 +94,12 @@ def create_post():
         
     except Exception as e:
         db.session.rollback()
+        # Clean up file if database update fails
+        if 'file_path' in locals() and file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
         return jsonify({'error': str(e)}), 500
 
 
