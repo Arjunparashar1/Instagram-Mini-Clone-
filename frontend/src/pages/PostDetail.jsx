@@ -1,0 +1,236 @@
+/**
+ * Post detail page component.
+ * Displays a single post with full details, comments, and interactions.
+ */
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { postAPI } from '../services/api';
+import CommentList from '../components/CommentList';
+import toast from 'react-hot-toast';
+
+const PostDetail = () => {
+  const { id } = useParams();
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
+
+  useEffect(() => {
+    fetchPost();
+  }, [id]);
+
+  const fetchPost = async () => {
+    try {
+      setLoading(true);
+      const response = await postAPI.getById(id);
+      const postData = response.data;
+      setPost(postData);
+      setIsLiked(postData.is_liked || false);
+      setLikeCount(postData.like_count || 0);
+      setCommentCount(postData.comments?.length || 0);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to load post');
+      navigate('/');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to like posts');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        await postAPI.unlike(id);
+        setIsLiked(false);
+        setLikeCount((prev) => prev - 1);
+        toast.success('Post unliked');
+      } else {
+        await postAPI.like(id);
+        setIsLiked(true);
+        setLikeCount((prev) => prev + 1);
+        toast.success('Post liked');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to like post');
+    }
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim() || !isAuthenticated) return;
+
+    setIsSubmitting(true);
+    try {
+      await postAPI.addComment(id, commentText);
+      setCommentText('');
+      setCommentCount((prev) => prev + 1);
+      toast.success('Comment added');
+      fetchPost(); // Refresh to show new comment
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to add comment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <div className="text-gray-500">Loading post...</div>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <div className="text-gray-500">Post not found</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 text-primary hover:text-blue-600 flex items-center space-x-2"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        <span>Back</span>
+      </button>
+
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div className="md:flex">
+          {/* Post Image */}
+          <div className="md:w-1/2">
+            <img
+              src={post.image_url}
+              alt={post.caption || 'Post image'}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/500x500?text=Image+Not+Found';
+              }}
+            />
+          </div>
+
+          {/* Post Details */}
+          <div className="md:w-1/2 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center space-x-3 p-4 border-b border-gray-200">
+              <img
+                src={post.profile_pic_url || 'https://via.placeholder.com/150'}
+                alt={post.username}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              <Link
+                to={`/profile/${post.username}`}
+                className="font-semibold text-gray-900 hover:text-primary"
+              >
+                {post.username}
+              </Link>
+            </div>
+
+            {/* Comments Section */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Caption */}
+              {post.caption && (
+                <div>
+                  <Link
+                    to={`/profile/${post.username}`}
+                    className="font-semibold text-gray-900 hover:text-primary mr-2"
+                  >
+                    {post.username}
+                  </Link>
+                  <span className="text-gray-800">{post.caption}</span>
+                </div>
+              )}
+
+              {/* Comments List */}
+              <CommentList postId={id} />
+            </div>
+
+            {/* Actions */}
+            <div className="border-t border-gray-200 p-4 space-y-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleLike}
+                  className={`focus:outline-none transition-transform hover:scale-110 ${
+                    isLiked ? 'text-red-500' : 'text-gray-700'
+                  }`}
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill={isLiked ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {likeCount > 0 && (
+                <p className="font-semibold text-gray-900">{likeCount} likes</p>
+              )}
+
+              <p className="text-gray-500 text-sm">{formatDate(post.created_at)}</p>
+
+              {/* Comment Form */}
+              {isAuthenticated && (
+                <form onSubmit={handleComment} className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!commentText.trim() || isSubmitting}
+                    className="text-primary font-semibold hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Post
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PostDetail;
+
