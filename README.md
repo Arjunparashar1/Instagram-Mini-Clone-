@@ -31,6 +31,7 @@ InstaMini is a simplified Instagram-style social media platform that demonstrate
 - **Comments**: Add comments to posts with real-time updates
 - **Feed**: Personalized feed showing posts from followed users and own posts
 - **Profile**: View user profiles with posts grid, followers, and following counts
+- **Profile Pictures**: Update profile picture via image URL or file upload from local computer, displayed across posts and comments with fallback avatars
 
 ### User Experience
 - Clean, modern, responsive UI with Tailwind CSS
@@ -205,6 +206,8 @@ The database is automatically created when you first run the Flask app. The SQLi
 
 ### Users
 - `GET /api/users/:username` - Get user profile
+- `PUT /api/users/profile-image` - Update user's profile picture via URL (protected)
+- `POST /api/users/profile-image/upload` - Upload profile picture from local file (protected)
 - `POST /api/users/follow/:user_id` - Follow a user
 - `DELETE /api/users/unfollow/:user_id` - Unfollow a user
 - `GET /api/users/:user_id/followers` - Get user's followers

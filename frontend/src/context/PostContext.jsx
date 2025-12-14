@@ -6,6 +6,30 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { postAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
+// Helper function to normalize profile picture URLs
+const normalizeProfilePicUrl = (url) => {
+  if (!url) return url;
+  // If it's already a full URL (http/https), return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If it's a relative path (starts with /), prepend API base URL
+  if (url.startsWith('/')) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    return `${apiBaseUrl}${url}`;
+  }
+  return url;
+};
+
+// Helper function to normalize post data
+const normalizePost = (post) => {
+  if (!post) return post;
+  return {
+    ...post,
+    profile_pic_url: normalizeProfilePicUrl(post.profile_pic_url),
+  };
+};
+
 const PostContext = createContext(null);
 
 export const usePost = () => {
@@ -49,9 +73,10 @@ export const PostProvider = ({ children }) => {
 
   // Add or update a post
   const setPost = useCallback((post) => {
+    const normalizedPost = normalizePost(post);
     setPosts((prev) => ({
       ...prev,
-      [post.id]: post,
+      [normalizedPost.id]: normalizedPost,
     }));
   }, []);
 
@@ -60,7 +85,8 @@ export const PostProvider = ({ children }) => {
     setPosts((prev) => {
       const updated = { ...prev };
       newPosts.forEach((post) => {
-        updated[post.id] = post;
+        const normalizedPost = normalizePost(post);
+        updated[normalizedPost.id] = normalizedPost;
       });
       return updated;
     });
@@ -152,7 +178,7 @@ export const PostProvider = ({ children }) => {
     if (!post) {
       try {
         const response = await postAPI.getById(postId);
-        post = response.data;
+        post = normalizePost(response.data);
         setPost(post);
       } catch (error) {
         toast.error(error.response?.data?.error || 'Failed to load post');
@@ -223,8 +249,9 @@ export const PostProvider = ({ children }) => {
   const refreshPost = useCallback(async (postId) => {
     try {
       const response = await postAPI.getById(postId);
-      setPost(response.data);
-      return response.data;
+      const normalizedPost = normalizePost(response.data);
+      setPost(normalizedPost);
+      return normalizedPost;
     } catch (error) {
       console.error('Failed to refresh post:', error);
       throw error;

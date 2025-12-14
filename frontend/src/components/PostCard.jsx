@@ -10,6 +10,9 @@ import { usePost } from '../context/PostContext';
 import toast from 'react-hot-toast';
 import CommentList from './CommentList';
 
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://via.placeholder.com/150?text=User';
+
 const PostCard = ({ post: initialPost }) => {
   const { isAuthenticated, user } = useAuth();
   const { getPost, setPost, toggleLike, addComment, deletePost } = usePost();
@@ -96,10 +99,13 @@ const PostCard = ({ post: initialPost }) => {
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-3">
           <img
-            src={post.profile_pic_url || 'https://via.placeholder.com/150'}
+            src={post.profile_pic_url || DEFAULT_AVATAR}
             alt={post.username}
             className="w-10 h-10 rounded-full object-cover"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.target.src = DEFAULT_AVATAR;
+            }}
           />
           <Link
             to={`/profile/${post.username}`}

@@ -2,12 +2,21 @@
 User-related routes for profile viewing and follow/unfollow functionality.
 Demonstrates many-to-many relationships and protected routes.
 """
-from flask import Blueprint, request, jsonify
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from backend.extensions import db
 from backend.models import User, Post, follows
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 
 @users_bp.route('', methods=['GET'])
@@ -194,5 +203,119 @@ def get_following(user_id):
         return jsonify({'following': following, 'count': len(following)}), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@users_bp.route('/profile-image', methods=['PUT', 'PATCH'])
+@jwt_required()  # Protected route: requires valid JWT token
+def update_profile_image():
+    """
+    Update user's profile picture endpoint.
+    Validates image URL and updates the user's profile_pic_url field.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Validate required field
+        if not data or 'profile_image' not in data:
+            return jsonify({'error': 'profile_image field is required'}), 400
+        
+        profile_image_url = data['profile_image'].strip()
+        
+        # Validate that it's a non-empty string
+        if not profile_image_url or not isinstance(profile_image_url, str):
+            return jsonify({'error': 'profile_image must be a valid string URL'}), 400
+        
+        # Basic URL validation (check if it starts with http:// or https://)
+        if not (profile_image_url.startswith('http://') or profile_image_url.startswith('https://')):
+            return jsonify({'error': 'profile_image must be a valid HTTP/HTTPS URL'}), 400
+        
+        # Update profile picture
+        current_user.profile_pic_url = profile_image_url
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Profile picture updated successfully',
+            'user': current_user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@users_bp.route('/profile-image/upload', methods=['POST'])
+@jwt_required()  # Protected route: requires valid JWT token
+def upload_profile_image():
+    """
+    Upload user's profile picture endpoint.
+    Accepts image files (png, jpg, jpeg, gif) and saves them to the server.
+    Updates the user's profile_pic_url field with the file path.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Check if file is present in request
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        # Check if file was actually selected
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Validate file type
+        if not allowed_file(file.filename):
+            return jsonify({
+                'error': 'Invalid file type. Allowed types: png, jpg, jpeg, gif'
+            }), 400
+        
+        # Ensure upload directory exists
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Generate unique filename to prevent conflicts
+        file_ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.{file_ext}"
+        secure_name = secure_filename(unique_filename)
+        
+        # Save file
+        file_path = os.path.join(upload_folder, secure_name)
+        file.save(file_path)
+        
+        # Generate URL path for the uploaded image
+        # The static files will be served from /static/profile_pics/
+        # Note: Frontend will prepend the API base URL if needed
+        image_url = f"/static/profile_pics/{secure_name}"
+        
+        # Update user's profile picture URL
+        current_user.profile_pic_url = image_url
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Profile picture uploaded successfully',
+            'profile_image': image_url,
+            'user': current_user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        # Clean up file if database update fails
+        if 'file_path' in locals() and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
         return jsonify({'error': str(e)}), 500
 

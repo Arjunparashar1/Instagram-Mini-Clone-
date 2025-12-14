@@ -24,7 +24,10 @@ def create_app(config_class=Config):
     Application factory pattern for creating Flask app instance.
     This pattern allows for easy testing and configuration management.
     """
-    app = Flask(__name__)
+    # Configure Flask app with static folder for serving uploaded files
+    # static_folder is relative to the backend directory
+    backend_dir = Path(__file__).parent
+    app = Flask(__name__, static_folder=str(backend_dir / 'static'), static_url_path='/static')
     app.config.from_object(config_class)
     
     # Initialize extensions

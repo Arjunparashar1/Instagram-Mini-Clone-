@@ -21,6 +21,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // For FormData, let the browser set Content-Type with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => {
@@ -56,6 +60,13 @@ export const userAPI = {
   unfollow: (userId) => api.delete(`/api/users/unfollow/${userId}`),
   getFollowers: (userId) => api.get(`/api/users/${userId}/followers`),
   getFollowing: (userId) => api.get(`/api/users/${userId}/following`),
+  updateProfileImage: (imageUrl) => api.put('/api/users/profile-image', { profile_image: imageUrl }),
+  uploadProfileImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Content-Type will be set automatically by axios for FormData
+    return api.post('/api/users/profile-image/upload', formData);
+  },
 };
 
 // Post API endpoints

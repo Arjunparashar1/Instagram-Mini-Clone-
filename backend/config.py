@@ -4,6 +4,7 @@ Handles environment variables and Flask app configuration.
 """
 import os
 from datetime import timedelta
+from pathlib import Path
 
 class Config:
     """Base configuration class with default settings."""
@@ -18,4 +19,10 @@ class Config:
     
     # CORS configuration for frontend communication
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173').split(',')
+    
+    # File upload configuration
+    BASE_DIR = Path(__file__).parent.parent
+    UPLOAD_FOLDER = BASE_DIR / 'backend' / 'static' / 'profile_pics'
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB max file size
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 

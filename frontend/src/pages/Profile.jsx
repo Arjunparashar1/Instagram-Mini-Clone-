@@ -10,15 +10,23 @@ import { usePost } from '../context/PostContext';
 import { userAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://via.placeholder.com/150?text=User';
+
 const Profile = () => {
   const { username } = useParams();
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, updateUser } = useAuth();
   const { posts, setPostsBatch, setUserPostsList, getPost, deletePost } = usePost();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
   const [deletingPostId, setDeletingPostId] = useState(null);
+  const [showUpdateProfilePic, setShowUpdateProfilePic] = useState(false);
+  const [profilePicUrl, setProfilePicUrl] = useState('');
+  const [isUpdatingProfilePic, setIsUpdatingProfilePic] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadMethod, setUploadMethod] = useState('url'); // 'url' or 'upload'
 
   useEffect(() => {
     fetchProfile();
@@ -29,6 +37,13 @@ const Profile = () => {
       setLoading(true);
       const response = await userAPI.getProfile(username);
       const profileData = response.data;
+      
+      // Ensure profile picture URL is absolute if it's a relative path
+      if (profileData.profile_pic_url && profileData.profile_pic_url.startsWith('/static')) {
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        profileData.profile_pic_url = `${apiBaseUrl}${profileData.profile_pic_url}`;
+      }
+      
       setProfile(profileData);
       setFollowing(profileData.is_following || false);
       
@@ -106,6 +121,116 @@ const Profile = () => {
     }
   };
 
+  const handleUpdateProfilePicture = async (e) => {
+    e.preventDefault();
+    
+    if (uploadMethod === 'url') {
+      // URL-based update
+      if (!profilePicUrl.trim()) {
+        toast.error('Please enter a valid image URL');
+        return;
+      }
+
+      // Basic URL validation
+      if (!profilePicUrl.startsWith('http://') && !profilePicUrl.startsWith('https://')) {
+        toast.error('Please enter a valid HTTP/HTTPS URL');
+        return;
+      }
+
+      setIsUpdatingProfilePic(true);
+      try {
+        const response = await userAPI.updateProfileImage(profilePicUrl);
+        const updatedUser = response.data.user;
+        
+        // Update profile state
+        setProfile((prev) => ({
+          ...prev,
+          profile_pic_url: updatedUser.profile_pic_url,
+        }));
+        
+        // Update auth context user data
+        updateUser(updatedUser);
+        
+        // Reset form
+        setProfilePicUrl('');
+        setShowUpdateProfilePic(false);
+        toast.success('Profile picture updated successfully!');
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Failed to update profile picture');
+      } finally {
+        setIsUpdatingProfilePic(false);
+      }
+    } else {
+      // File upload
+      if (!selectedFile) {
+        toast.error('Please select an image file');
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        toast.error('Invalid file type. Please select a PNG, JPG, JPEG, or GIF image');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (selectedFile.size > maxSize) {
+        toast.error('File size too large. Maximum size is 5MB');
+        return;
+      }
+
+      setIsUpdatingProfilePic(true);
+      try {
+        const response = await userAPI.uploadProfileImage(selectedFile);
+        const updatedUser = response.data.user;
+        
+        // Update profile state with full URL
+        // Backend returns relative path like /static/profile_pics/filename.jpg
+        // We need to prepend the API base URL
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const imageUrl = response.data.profile_image.startsWith('http') 
+          ? response.data.profile_image 
+          : `${apiBaseUrl}${response.data.profile_image}`;
+        
+        // Update the user object with the full URL
+        const updatedUserWithFullUrl = {
+          ...updatedUser,
+          profile_pic_url: imageUrl,
+        };
+        
+        setProfile((prev) => ({
+          ...prev,
+          profile_pic_url: imageUrl,
+        }));
+        
+        // Update auth context user data with full URL
+        updateUser(updatedUserWithFullUrl);
+        
+        // Reset form
+        setSelectedFile(null);
+        setShowUpdateProfilePic(false);
+        toast.success('Profile picture uploaded successfully!');
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Failed to upload profile picture');
+      } finally {
+        setIsUpdatingProfilePic(false);
+      }
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleImageError = (e) => {
+    e.target.src = DEFAULT_AVATAR;
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 text-center">
@@ -129,12 +254,36 @@ const Profile = () => {
       {/* Profile Header */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-8">
-          <img
-            src={profile.profile_pic_url || 'https://via.placeholder.com/150'}
-            alt={profile.username}
-            className="w-24 h-24 rounded-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          <div className="relative">
+            <img
+              src={profile.profile_pic_url || DEFAULT_AVATAR}
+              alt={profile.username}
+              className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+              referrerPolicy="no-referrer"
+              onError={handleImageError}
+            />
+            {isOwnProfile && (
+              <button
+                onClick={() => setShowUpdateProfilePic(!showUpdateProfilePic)}
+                className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 hover:bg-blue-600 transition-colors shadow-md"
+                title="Update profile picture"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="flex-1 text-center md:text-left">
             <div className="flex flex-col md:flex-row items-center md:items-center space-y-4 md:space-y-0 md:space-x-6 mb-4">
               <h1 className="text-2xl font-bold text-gray-900">{profile.username}</h1>
@@ -177,6 +326,118 @@ const Profile = () => {
             )}
           </div>
         </div>
+        
+        {/* Update Profile Picture Form */}
+        {isOwnProfile && showUpdateProfilePic && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <form onSubmit={handleUpdateProfilePicture} className="space-y-4">
+              {/* Upload Method Toggle */}
+              <div className="flex space-x-4 mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMethod('url');
+                    setSelectedFile(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    uploadMethod === 'url'
+                      ? 'bg-primary text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  From URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMethod('upload');
+                    setProfilePicUrl('');
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    uploadMethod === 'upload'
+                      ? 'bg-primary text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Upload File
+                </button>
+              </div>
+
+              {/* URL Input */}
+              {uploadMethod === 'url' && (
+                <div>
+                  <label htmlFor="profilePicUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Picture URL
+                  </label>
+                  <input
+                    type="url"
+                    id="profilePicUrl"
+                    value={profilePicUrl}
+                    onChange={(e) => setProfilePicUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isUpdatingProfilePic}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Enter a valid image URL (must start with http:// or https://)
+                  </p>
+                </div>
+              )}
+
+              {/* File Upload Input */}
+              {uploadMethod === 'upload' && (
+                <div>
+                  <label htmlFor="profilePicFile" className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Image File
+                  </label>
+                  <input
+                    type="file"
+                    id="profilePicFile"
+                    accept="image/png,image/jpeg,image/jpg,image/gif"
+                    onChange={handleFileChange}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-600"
+                    disabled={isUpdatingProfilePic}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Supported formats: PNG, JPG, JPEG, GIF (Max size: 5MB)
+                  </p>
+                  {selectedFile && (
+                    <p className="mt-2 text-sm text-gray-700">
+                      Selected: <span className="font-medium">{selectedFile.name}</span> ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  disabled={
+                    isUpdatingProfilePic ||
+                    (uploadMethod === 'url' && !profilePicUrl.trim()) ||
+                    (uploadMethod === 'upload' && !selectedFile)
+                  }
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isUpdatingProfilePic ? 'Updating...' : uploadMethod === 'url' ? 'Update Picture' : 'Upload Picture'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpdateProfilePic(false);
+                    setProfilePicUrl('');
+                    setSelectedFile(null);
+                    setUploadMethod('url');
+                  }}
+                  disabled={isUpdatingProfilePic}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
 
       {/* Posts Grid */}

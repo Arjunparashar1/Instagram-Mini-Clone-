@@ -11,6 +11,9 @@ import { postAPI } from '../services/api';
 import CommentList from '../components/CommentList';
 import toast from 'react-hot-toast';
 
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://via.placeholder.com/150?text=User';
+
 const PostDetail = () => {
   const { id } = useParams();
   const { isAuthenticated, user } = useAuth();
@@ -161,10 +164,13 @@ const PostDetail = () => {
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
                 <img
-                  src={post.profile_pic_url || 'https://via.placeholder.com/150'}
+                  src={post.profile_pic_url || DEFAULT_AVATAR}
                   alt={post.username}
                   className="w-10 h-10 rounded-full object-cover"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.target.src = DEFAULT_AVATAR;
+                  }}
                 />
                 <Link
                   to={`/profile/${post.username}`}

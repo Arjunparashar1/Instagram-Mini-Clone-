@@ -6,6 +6,24 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { postAPI } from '../services/api';
 
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://via.placeholder.com/150?text=User';
+
+// Helper function to normalize profile picture URLs
+const normalizeProfilePicUrl = (url) => {
+  if (!url) return url;
+  // If it's already a full URL (http/https), return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If it's a relative path (starts with /), prepend API base URL
+  if (url.startsWith('/')) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    return `${apiBaseUrl}${url}`;
+  }
+  return url;
+};
+
 const CommentList = ({ postId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +32,11 @@ const CommentList = ({ postId }) => {
     const fetchComments = async () => {
       try {
         const response = await postAPI.getComments(postId);
-        setComments(response.data.comments || []);
+        const comments = (response.data.comments || []).map((comment) => ({
+          ...comment,
+          profile_pic_url: normalizeProfilePicUrl(comment.profile_pic_url),
+        }));
+        setComments(comments);
       } catch (error) {
         console.error('Failed to fetch comments:', error);
       } finally {
@@ -51,10 +73,13 @@ const CommentList = ({ postId }) => {
       {comments.map((comment) => (
         <div key={comment.id} className="flex items-start space-x-3">
           <img
-            src={comment.profile_pic_url || 'https://via.placeholder.com/150'}
+            src={comment.profile_pic_url || DEFAULT_AVATAR}
             alt={comment.username}
             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.target.src = DEFAULT_AVATAR;
+            }}
           />
           <div className="flex-1">
             <div className="bg-gray-50 rounded-lg px-3 py-2">

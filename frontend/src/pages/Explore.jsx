@@ -8,6 +8,24 @@ import { useAuth } from '../context/AuthContext';
 import { userAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://via.placeholder.com/150?text=User';
+
+// Helper function to normalize profile picture URLs
+const normalizeProfilePicUrl = (url) => {
+  if (!url) return url;
+  // If it's already a full URL (http/https), return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If it's a relative path (starts with /), prepend API base URL
+  if (url.startsWith('/')) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    return `${apiBaseUrl}${url}`;
+  }
+  return url;
+};
+
 const Explore = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -42,7 +60,10 @@ const Explore = () => {
     try {
       setLoading(true);
       const response = await userAPI.getAllUsers();
-      const usersData = response.data.users || [];
+      const usersData = (response.data.users || []).map((user) => ({
+        ...user,
+        profile_pic_url: normalizeProfilePicUrl(user.profile_pic_url),
+      }));
       setUsers(usersData);
       setFilteredUsers(usersData);
       
@@ -153,10 +174,13 @@ const Explore = () => {
                   {/* Profile Picture */}
                   <Link to={`/profile/${user.username}`}>
                     <img
-                      src={user.profile_pic_url || 'https://via.placeholder.com/150'}
+                      src={user.profile_pic_url || DEFAULT_AVATAR}
                       alt={user.username}
                       className="w-16 h-16 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.src = DEFAULT_AVATAR;
+                      }}
                     />
                   </Link>
 
