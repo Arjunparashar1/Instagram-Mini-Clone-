@@ -30,7 +30,7 @@ InstaMini is a simplified Instagram-style social media platform that demonstrate
 - **Likes**: Like/unlike posts with toggle functionality
 - **Comments**: Add comments to posts with real-time updates
 - **Feed**: Personalized feed showing posts from followed users and own posts
-- **Profile**: View user profiles with posts grid, followers, and following counts
+- **Profile**: View user profiles with posts grid, followers, and following counts (clickable to view lists dynamically)
 - **Profile Pictures**: Update profile picture via image URL or file upload from local computer, displayed across posts and comments with fallback avatars
 - **Username Editing**: Edit your own username with validation (unique, length, format checks)
 
